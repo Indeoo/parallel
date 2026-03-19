@@ -48,37 +48,46 @@ final class IndependentTaskBenchmarks {
         Path root = config.workingDirectory().resolve("task1");
         Files.createDirectories(root);
 
-        List<Path> htmlFiles = generateHtmlDocuments(root.resolve("html"));
-        long[] numbers = generateNumbers();
-        double[][] matrixA = generateMatrix(17);
-        double[][] matrixB = generateMatrix(31);
+        Task1Input input = prepareInput(root);
+        return runBenchmarks(input);
+    }
 
+    private Task1Input prepareInput(Path root) throws IOException {
+        return new Task1Input(
+                prepareHtmlDocuments(root.resolve("html")),
+                generateNumbers(),
+                generateMatrix(17),
+                generateMatrix(31)
+        );
+    }
+
+    private List<BenchmarkResult> runBenchmarks(Task1Input input) throws Exception {
         List<BenchmarkResult> results = new ArrayList<>();
-        results.add(benchmarkTagCountSequential(htmlFiles));
+        results.add(benchmarkTagCountSequential(input.htmlFiles()));
         for (int threadCount : config.threadCounts()) {
-            results.add(benchmarkTagCountMapReduce(htmlFiles, threadCount));
-            results.add(benchmarkTagCountForkJoin(htmlFiles, threadCount));
-            results.add(benchmarkTagCountWorkerPool(htmlFiles, threadCount));
+            results.add(benchmarkTagCountMapReduce(input.htmlFiles(), threadCount));
+            results.add(benchmarkTagCountForkJoin(input.htmlFiles(), threadCount));
+            results.add(benchmarkTagCountWorkerPool(input.htmlFiles(), threadCount));
         }
 
-        results.add(benchmarkArrayStatsSequential(numbers));
+        results.add(benchmarkArrayStatsSequential(input.numbers()));
         for (int threadCount : config.threadCounts()) {
-            results.add(benchmarkArrayStatsMapReduce(numbers, threadCount));
-            results.add(benchmarkArrayStatsForkJoin(numbers, threadCount));
-            results.add(benchmarkArrayStatsWorkerPool(numbers, threadCount));
+            results.add(benchmarkArrayStatsMapReduce(input.numbers(), threadCount));
+            results.add(benchmarkArrayStatsForkJoin(input.numbers(), threadCount));
+            results.add(benchmarkArrayStatsWorkerPool(input.numbers(), threadCount));
         }
 
-        results.add(benchmarkMatrixSequential(matrixA, matrixB));
+        results.add(benchmarkMatrixSequential(input.matrixA(), input.matrixB()));
         for (int threadCount : config.threadCounts()) {
-            results.add(benchmarkMatrixMapReduce(matrixA, matrixB, threadCount));
-            results.add(benchmarkMatrixForkJoin(matrixA, matrixB, threadCount));
-            results.add(benchmarkMatrixWorkerPool(matrixA, matrixB, threadCount));
+            results.add(benchmarkMatrixMapReduce(input.matrixA(), input.matrixB(), threadCount));
+            results.add(benchmarkMatrixForkJoin(input.matrixA(), input.matrixB(), threadCount));
+            results.add(benchmarkMatrixWorkerPool(input.matrixA(), input.matrixB(), threadCount));
         }
 
         return results;
     }
 
-    private List<Path> generateHtmlDocuments(Path directory) throws IOException {
+    private List<Path> prepareHtmlDocuments(Path directory) throws IOException {
         if (Files.exists(directory)) {
             clearDirectory(directory);
         }
@@ -459,6 +468,9 @@ final class IndependentTaskBenchmarks {
     }
 
     private record SortedStats(long min, long max, long sum, long[] sorted) {
+    }
+
+    private record Task1Input(List<Path> htmlFiles, long[] numbers, double[][] matrixA, double[][] matrixB) {
     }
 
     private record RowBlockResult(int startRow, double[][] rows) {

@@ -41,8 +41,12 @@ final class TransactionPatternBenchmarks {
     List<BenchmarkResult> run() throws Exception {
         Path root = config.workingDirectory().resolve("task2");
         Files.createDirectories(root);
-        Path transactionsFile = generateTransactions(root.resolve("transactions.csv"));
+        Path transactionsFile = prepareTransactions(root.resolve("transactions.csv"));
 
+        return runBenchmarks(transactionsFile);
+    }
+
+    private List<BenchmarkResult> runBenchmarks(Path transactionsFile) throws Exception {
         List<BenchmarkResult> results = new ArrayList<>();
         results.add(benchmarkSequential(transactionsFile));
         for (int threadCount : config.threadCounts()) {
@@ -52,7 +56,7 @@ final class TransactionPatternBenchmarks {
         return results;
     }
 
-    private Path generateTransactions(Path file) throws IOException {
+    private Path prepareTransactions(Path file) throws IOException {
         SplittableRandom random = new SplittableRandom(2026_2L);
         try (var writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
             writer.write("userId,amount,currency,date,type");
