@@ -1,4 +1,8 @@
-package org.venherak.lab2;
+package org.venherak.lab2.task2;
+
+import org.venherak.lab2.BenchmarkResult;
+import org.venherak.lab2.Lab2Config;
+import org.venherak.lab2.task2.generator.TransactionsFileGenerator;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -11,7 +15,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.SplittableRandom;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
@@ -20,13 +23,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.LongAdder;
 
-final class TransactionPatternBenchmarks {
+public final class TransactionPatternBenchmarks {
     private static final String LINE_POISON = "__END__";
     private static final Transaction TRANSACTION_POISON = new Transaction(-1L, 0L, Currency.USD, LocalDate.MIN, "POISON");
     private static final MoneyAmount MONEY_POISON = new MoneyAmount(Long.MIN_VALUE, Long.MIN_VALUE);
-    private static final String[] PRODUCT_TYPES = {"book", "course", "hardware", "software", "ticket", "subscription"};
 
     private final Lab2Config config;
+    private final TransactionsFileGenerator fileGenerator;
     private final Map<Currency, BigDecimal> rates = Map.of(
             Currency.USD, BigDecimal.ONE,
             Currency.EUR, new BigDecimal("1.09"),
@@ -34,15 +37,17 @@ final class TransactionPatternBenchmarks {
             Currency.GBP, new BigDecimal("1.27")
     );
 
-    TransactionPatternBenchmarks(Lab2Config config) {
-        this.config = config;
+    public TransactionPatternBenchmarks(Lab2Config config) {
+        this(config, new TransactionsFileGenerator(config));
     }
 
-    List<BenchmarkResult> run() throws Exception {
-        Path root = config.workingDirectory().resolve("task2");
-        Files.createDirectories(root);
-        Path transactionsFile = prepareTransactions(root.resolve("transactions.csv"));
+    TransactionPatternBenchmarks(Lab2Config config, TransactionsFileGenerator fileGenerator) {
+        this.config = config;
+        this.fileGenerator = fileGenerator;
+    }
 
+    public List<BenchmarkResult> run() throws Exception {
+        Path transactionsFile = fileGenerator.prepare(config.workingDirectory().resolve("task2"));
         return runBenchmarks(transactionsFile);
     }
 
@@ -54,24 +59,6 @@ final class TransactionPatternBenchmarks {
             results.add(benchmarkPipeline(transactionsFile, threadCount));
         }
         return results;
-    }
-
-    private Path prepareTransactions(Path file) throws IOException {
-        SplittableRandom random = new SplittableRandom(2026_2L);
-        try (var writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
-            writer.write("userId,amount,currency,date,type");
-            writer.newLine();
-            for (int index = 0; index < config.transactionCount(); index++) {
-                long userId = 10_000L + random.nextLong(50_000L);
-                long amount = 100 + random.nextLong(150_000L);
-                Currency currency = Currency.values()[random.nextInt(Currency.values().length)];
-                LocalDate date = LocalDate.of(2026, 1, 1).plusDays(random.nextInt(365));
-                String type = PRODUCT_TYPES[random.nextInt(PRODUCT_TYPES.length)];
-                writer.write(userId + "," + amount + "," + currency + "," + date + "," + type);
-                writer.newLine();
-            }
-        }
-        return file;
     }
 
     private BenchmarkResult benchmarkSequential(Path file) throws IOException {

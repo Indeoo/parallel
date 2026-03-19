@@ -1,64 +1,49 @@
-package org.venherak.lab2;
+package org.venherak.lab2.task1;
+
+import org.venherak.lab2.BenchmarkResult;
+import org.venherak.lab2.Lab2Config;
+import org.venherak.lab2.task1.generator.Task1InputGenerator;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.SplittableRandom;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Future;
 import java.util.concurrent.RecursiveAction;
 import java.util.concurrent.RecursiveTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
-final class IndependentTaskBenchmarks {
+public final class IndependentTaskBenchmarks {
     private static final Pattern TAG_PATTERN = Pattern.compile("<\\s*/?\\s*([a-zA-Z0-9]+)");
-    private static final String[] TAG_NAMES = {
-            "html", "body", "div", "span", "main", "section", "article",
-            "p", "a", "ul", "li", "table", "tr", "td", "header", "footer", "img"
-    };
-    private static final String[] SENTENCES = {
-            "parallel patterns improve throughput",
-            "fork join balances recursive workloads",
-            "worker pools reduce thread creation overhead",
-            "map reduce scales data aggregation",
-            "java executors simplify concurrency management"
-    };
     private static final int ARRAY_CHUNK_SIZE = 50_000;
     private static final int MATRIX_ROW_BLOCK = 16;
 
     private final Lab2Config config;
+    private final Task1InputGenerator inputGenerator;
 
-    IndependentTaskBenchmarks(Lab2Config config) {
+    public IndependentTaskBenchmarks(Lab2Config config) {
+        this(config, new Task1InputGenerator(config));
+    }
+
+    IndependentTaskBenchmarks(Lab2Config config, Task1InputGenerator inputGenerator) {
         this.config = config;
+        this.inputGenerator = inputGenerator;
     }
 
-    List<BenchmarkResult> run() throws Exception {
-        Path root = config.workingDirectory().resolve("task1");
-        Files.createDirectories(root);
-
-        Task1Input input = prepareInput(root);
+    public List<BenchmarkResult> run() throws Exception {
+        Task1Input input = inputGenerator.prepare(config.workingDirectory().resolve("task1"));
         return runBenchmarks(input);
-    }
-
-    private Task1Input prepareInput(Path root) throws IOException {
-        return new Task1Input(
-                prepareHtmlDocuments(root.resolve("html")),
-                generateNumbers(),
-                generateMatrix(17),
-                generateMatrix(31)
-        );
     }
 
     private List<BenchmarkResult> runBenchmarks(Task1Input input) throws Exception {
@@ -87,72 +72,17 @@ final class IndependentTaskBenchmarks {
         return results;
     }
 
-    private List<Path> prepareHtmlDocuments(Path directory) throws IOException {
-        if (Files.exists(directory)) {
-            clearDirectory(directory);
-        }
-        Files.createDirectories(directory);
-
-        SplittableRandom random = new SplittableRandom(20260319L);
-        List<Path> files = new ArrayList<>();
-        for (int index = 0; index < config.htmlDocumentCount(); index++) {
-            Path path = directory.resolve("doc-" + index + ".html");
-            Files.writeString(path, buildHtmlDocument(random, index), StandardCharsets.UTF_8);
-            files.add(path);
-        }
-        return files;
-    }
-
-    private String buildHtmlDocument(SplittableRandom random, int index) {
-        int elements = 40 + random.nextInt(140);
-        StringBuilder builder = new StringBuilder(elements * 64);
-        builder.append("<html><body><main data-id=\"").append(index).append("\">");
-        for (int i = 0; i < elements; i++) {
-            String tag = TAG_NAMES[random.nextInt(TAG_NAMES.length)];
-            builder.append('<').append(tag).append(" class=\"c").append(i % 7).append("\">");
-            builder.append(SENTENCES[random.nextInt(SENTENCES.length)]);
-            if (random.nextInt(4) == 0) {
-                builder.append("<span>nested text ").append(i).append("</span>");
-            }
-            builder.append("</").append(tag).append('>');
-        }
-        builder.append("</main></body></html>");
-        return builder.toString();
-    }
-
-    private long[] generateNumbers() {
-        SplittableRandom random = new SplittableRandom(702_2026L);
-        long[] numbers = new long[config.numberCount()];
-        for (int i = 0; i < numbers.length; i++) {
-            long value = random.nextLong(2_000_000_000L) - 1_000_000_000L;
-            numbers[i] = value + (i % 17 == 0 ? i : -i);
-        }
-        return numbers;
-    }
-
-    private double[][] generateMatrix(int seedOffset) {
-        int size = config.matrixSize();
-        SplittableRandom random = new SplittableRandom(99_000L + seedOffset);
-        double[][] matrix = new double[size][size];
-        for (int row = 0; row < size; row++) {
-            for (int column = 0; column < size; column++) {
-                matrix[row][column] = random.nextDouble(-5.0, 5.0);
-            }
-        }
-        return matrix;
-    }
-
-    private BenchmarkResult benchmarkTagCountSequential(List<Path> htmlFiles) throws IOException {
+    private BenchmarkResult benchmarkTagCountSequential(List<java.nio.file.Path> htmlFiles) throws IOException {
         long started = System.nanoTime();
         Map<String, Integer> counts = new HashMap<>();
-        for (Path htmlFile : htmlFiles) {
+        for (java.nio.file.Path htmlFile : htmlFiles) {
             mergeCounts(counts, countTags(htmlFile));
         }
         long elapsed = System.nanoTime() - started;
         return new BenchmarkResult("HTML tag frequency", "Sequential", 1, elapsed, summarizeTagCounts(counts));
     }
 
-    private BenchmarkResult benchmarkTagCountMapReduce(List<Path> htmlFiles, int threadCount) {
+    private BenchmarkResult benchmarkTagCountMapReduce(List<java.nio.file.Path> htmlFiles, int threadCount) {
         ForkJoinPool pool = new ForkJoinPool(threadCount);
         long started = System.nanoTime();
         Map<String, Integer> counts = pool.submit(() -> htmlFiles.parallelStream()
@@ -164,7 +94,7 @@ final class IndependentTaskBenchmarks {
         return new BenchmarkResult("HTML tag frequency", "Map-Reduce", threadCount, elapsed, summarizeTagCounts(counts));
     }
 
-    private BenchmarkResult benchmarkTagCountForkJoin(List<Path> htmlFiles, int threadCount) {
+    private BenchmarkResult benchmarkTagCountForkJoin(List<java.nio.file.Path> htmlFiles, int threadCount) {
         ForkJoinPool pool = new ForkJoinPool(threadCount);
         long started = System.nanoTime();
         Map<String, Integer> counts = pool.invoke(new TagCountTask(htmlFiles, 0, htmlFiles.size()));
@@ -173,7 +103,7 @@ final class IndependentTaskBenchmarks {
         return new BenchmarkResult("HTML tag frequency", "Fork-Join", threadCount, elapsed, summarizeTagCounts(counts));
     }
 
-    private BenchmarkResult benchmarkTagCountWorkerPool(List<Path> htmlFiles, int threadCount) throws Exception {
+    private BenchmarkResult benchmarkTagCountWorkerPool(List<java.nio.file.Path> htmlFiles, int threadCount) throws Exception {
         long started = System.nanoTime();
         Map<String, Integer> counts = new HashMap<>();
         try (ExecutorService executor = Executors.newFixedThreadPool(threadCount)) {
@@ -316,11 +246,11 @@ final class IndependentTaskBenchmarks {
         return new BenchmarkResult("Matrix multiplication", "Worker Pool", threadCount, elapsed, summarizeMatrix(result));
     }
 
-    private Map<String, Integer> countTags(Path htmlFile) throws IOException {
+    private Map<String, Integer> countTags(java.nio.file.Path htmlFile) throws IOException {
         return countTags(Files.readString(htmlFile, StandardCharsets.UTF_8));
     }
 
-    private Map<String, Integer> countTagsUnchecked(Path htmlFile) {
+    private Map<String, Integer> countTagsUnchecked(java.nio.file.Path htmlFile) {
         try {
             return countTags(htmlFile);
         } catch (IOException exception) {
@@ -455,33 +385,18 @@ final class IndependentTaskBenchmarks {
         return (length + ARRAY_CHUNK_SIZE - 1) / ARRAY_CHUNK_SIZE;
     }
 
-    private void clearDirectory(Path directory) throws IOException {
-        try (var stream = Files.walk(directory)) {
-            stream.sorted((left, right) -> right.compareTo(left)).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException exception) {
-                    throw new IllegalStateException("Cannot delete " + path, exception);
-                }
-            });
-        }
-    }
-
     private record SortedStats(long min, long max, long sum, long[] sorted) {
-    }
-
-    private record Task1Input(List<Path> htmlFiles, long[] numbers, double[][] matrixA, double[][] matrixB) {
     }
 
     private record RowBlockResult(int startRow, double[][] rows) {
     }
 
     private final class TagCountTask extends RecursiveTask<Map<String, Integer>> {
-        private final List<Path> files;
+        private final List<java.nio.file.Path> files;
         private final int startInclusive;
         private final int endExclusive;
 
-        private TagCountTask(List<Path> files, int startInclusive, int endExclusive) {
+        private TagCountTask(List<java.nio.file.Path> files, int startInclusive, int endExclusive) {
             this.files = files;
             this.startInclusive = startInclusive;
             this.endExclusive = endExclusive;

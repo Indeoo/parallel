@@ -1,5 +1,8 @@
 package org.venherak.lab2;
 
+import org.venherak.lab2.task1.IndependentTaskBenchmarks;
+import org.venherak.lab2.task2.TransactionPatternBenchmarks;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;

@@ -16,7 +16,7 @@ public final class PrimeNumbersBenchmark implements BenchmarkTask {
     private final int limit;
 
     public PrimeNumbersBenchmark(String[] args) {
-        this.limit = BenchmarkArguments.intOption(args, "primeLimit", 250_000);
+        this.limit = BenchmarkArguments.intOption(args, "primeLimit", 1_000_000);
     }
 
     @Override

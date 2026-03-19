@@ -16,8 +16,7 @@ public final class MatrixTransposeBenchmark implements BenchmarkTask {
     private final int blockSize;
 
     public MatrixTransposeBenchmark(String[] args) {
-        long maxMemory = Runtime.getRuntime().maxMemory();
-        int defaultMatrixSize = maxMemory >= 1_400_000_000L ? 10_000 : 4_096;
+        int defaultMatrixSize = 30_000;
         this.size = BenchmarkArguments.intOption(args, "matrixSize", defaultMatrixSize);
         this.blockSize = BenchmarkArguments.intOption(args, "matrixBlock", 64);
     }
