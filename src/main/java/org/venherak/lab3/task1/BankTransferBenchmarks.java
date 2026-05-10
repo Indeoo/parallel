@@ -158,7 +158,7 @@ public final class BankTransferBenchmarks {
                 return;
             }
             from.balance -= amount;
-            Thread.yield();
+            //Thread.yield();
             to.balance += amount;
         }
 

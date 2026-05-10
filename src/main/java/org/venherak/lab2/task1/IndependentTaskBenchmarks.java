@@ -26,8 +26,8 @@ import java.util.stream.IntStream;
 
 public final class IndependentTaskBenchmarks {
     private static final Pattern TAG_PATTERN = Pattern.compile("<\\s*/?\\s*([a-zA-Z0-9]+)");
-    private static final int ARRAY_CHUNK_SIZE = 50_000;
-    private static final int MATRIX_ROW_BLOCK = 16;
+    private static final int ARRAY_CHUNK_SIZE = 500_000;
+    private static final int MATRIX_ROW_BLOCK = 64;
 
     private final Lab2Config config;
     private final Task1InputGenerator inputGenerator;
